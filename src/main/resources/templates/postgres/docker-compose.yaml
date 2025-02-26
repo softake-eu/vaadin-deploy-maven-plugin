@@ -1,0 +1,102 @@
+services:
+
+  db:
+    container_name: db
+    image: postgres:17.2
+    restart: on-failure:3
+    mem_limit: 1g
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - ${APPS_DATA}/postgres/data:/var/lib/postgresql/data:rw
+      - ${APPS_DATA}/postgres/logs:/var/log/postgresql:rw
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d $$POSTGRES_DB -U $$POSTGRES_USER" ]
+      start_period: 1m
+      start_interval: 10s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    networks:
+      - vaadin.network
+
+  vaadin-app:
+    container_name: vaadin-app
+    build:
+      context: ${VAADIN_PROJECT_DIR}
+      dockerfile: ${VAADIN_PROJECT_DIR}/Dockerfile
+    restart: on-failure:3
+    environment:
+      # Override application.properties via env variables
+      # spring.datasource.url
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db/${DB_NAME}
+      # spring.datasource.username
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      # spring.datasource.password
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      # server.port - it is the vaadin application port inside docker container.
+      # Please don't touch it even if you run the project on another port in development mode.
+      # It won't affect your server environment, because the port isn't exposed to the host
+      - SERVER_PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail http://localhost:8080/ || exit 1"]
+      start_period: 1m
+      start_interval: 10s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    networks:
+      - vaadin.network
+
+  proxy:
+    container_name: nginx
+    image: nginx:1.27.3-alpine3.20-slim
+    restart: on-failure:3
+    mem_limit: 128m
+    volumes:
+      - ${DEPLOYMENT_DIR}/configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ${DEPLOYMENT_DIR}/configs/nginx/entrypoint.sh:/usr/local/bin/entrypoint.sh:ro
+      - ${APPS_DATA}/nginx/certs:/etc/nginx/certs:ro
+      - ${APPS_DATA}/nginx/logs:/var/log/nginx:rw
+      - ${APPS_DATA}/nginx/html:/var/www/html:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    entrypoint: "sh /usr/local/bin/entrypoint.sh"
+    depends_on:
+      vaadin-app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-check-certificate -q --spider http://127.0.0.1 || exit 1"]
+      start_period: 1m
+      start_interval: 10s
+      interval: 1m
+      timeout: 5s
+      retries: 3
+    networks:
+      - vaadin.network
+
+  certbot:
+    container_name: certbot
+    image: certbot/certbot:v3.0.1
+    volumes:
+      - ${DEPLOYMENT_DIR}/configs/certbot/post-renew-hook.sh:/usr/local/bin/post-renew-hook.sh:ro
+      - ${APPS_DATA}/nginx/html:/var/www/html:rw
+      - ${APPS_DATA}/nginx/certs:/etc/nginx/certs:rw
+    command: "certonly --email ${certbot.email} --agree-tos --no-eff-email -v --webroot -w /var/www/html -d ${server.domain} --post-hook \"sh /usr/local/bin/post-renew-hook.sh\""
+    depends_on:
+      proxy:
+        condition: service_healthy
+    networks:
+      - vaadin.network
+
+networks:
+  vaadin.network:
+    driver: bridge
