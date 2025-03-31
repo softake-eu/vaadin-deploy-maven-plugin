@@ -30,10 +30,10 @@ To deploy your Vaadin project to a linux server you have to do the following:
 
 1. **Configure the Plugin** in your `pom.xml` (see examples below).
 2. **Initialize Deployment Configurations**   by executing maven goal: `mvn vaadin-deploy:init `
-3. **Build your Vaadin project:** `mvn clean package `
+3. **Build your Vaadin project:** `mvn clean package -Pproduction`
 4. **Deploy your Vaadin project** to the server by executing one of the following maven goals (depending on a server type):
 ```shell
-   mvn vaadin-deploy:deploy-tst  # TST server
+   mvn vaadin-deploy:deploy-tst  # TEST server
    mvn vaadin-deploy:deploy-qa   # QA server
    mvn vaadin-deploy:deploy-stg  # STG server
    mvn vaadin-deploy:deploy-prod # PROD server
@@ -51,7 +51,7 @@ To deploy your Vaadin project to a linux server you have to do the following:
         <certbotEmail>info@some.co</certbotEmail>
         <servers>
             <server>
-                <type>TST</type>
+                <type>TEST</type>
                 <!--  put your domain   -->
                 <domain>vaadin-3.softake.eu</domain>
                 <deployDir>/opt/vaadin-app</deployDir>
@@ -126,7 +126,7 @@ To deploy your Vaadin project to a linux server you have to do the following:
         <certbotEmail>info@some.co</certbotEmail>
         <servers>
             <server>
-                <type>TST</type>
+                <type>TEST</type>
                 <domain>vaadin-1.softake.eu</domain>
                 <deployDir>/opt/vaadin-deployment-test</deployDir>
                 <appsDataDir>/opt/apps_data</appsDataDir>
@@ -200,7 +200,7 @@ To deploy your Vaadin project to a linux server you have to do the following:
 </plugin>
 ```
 
-## Two Servers (TST and QA)
+## Two Servers (TEST and QA)
 
 ```xml
 <plugin>
@@ -211,7 +211,7 @@ To deploy your Vaadin project to a linux server you have to do the following:
         <certbotEmail>info@some.co</certbotEmail>
         <servers>
             <server>
-                <type>TST</type>
+                <type>TEST</type>
                 <domain>vaadin-tst.softake.eu</domain>
                 <deployDir>/opt/vaadin-deployment-test</deployDir>
                 <appsDataDir>/opt/tst_apps_data</appsDataDir>
@@ -260,7 +260,7 @@ To deploy your Vaadin project to a linux server you have to do the following:
         <servers>
             <!-- Mandatory. Start server configuration -->
             <server>
-                <!-- Mandatory. Type of the server can be one of [LOCAL, TST, QA, STG, PROD] -->
+                <!-- Mandatory. Type of the server can be one of [LOCAL, TEST, QA, STG, PROD] -->
                 <type>PROD</type>
                 <!-- Mandatory. Domain name of your server. It will be used to prepare docker-compose and generate SSL certificates -->
                 <domain>vaadin-3.softake.eu</domain>
